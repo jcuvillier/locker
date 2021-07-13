@@ -7,9 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestFixedBackoff(t *testing.T) {
+func TestFixedDelay(t *testing.T) {
 	d := 10 * time.Millisecond
-	b := FixedBackoff{
+	b := FixedDelay{
 		Duration: d,
 	}
 	assert.Equal(t, d, b.Next())

@@ -6,14 +6,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
-type testBackoff struct{}
+type testDelay struct{}
 
-func (b *testBackoff) Next() time.Duration {
+func (d *testDelay) Next() time.Duration {
 	return 0
 }
 
@@ -28,13 +27,18 @@ func TestNewLocker(t *testing.T) {
 		released = true
 		return nil
 	}
-	locker := New(acquire, release, WithBackoff(&testBackoff{}))
-	assert.IsType(t, &testBackoff{}, locker.backoff)
+	// Create new locker
+	locker := New(acquire, release, WithDelay(&testDelay{}))
+	assert.IsType(t, &testDelay{}, locker.delay)
 	assert.False(t, acquired)
 	assert.False(t, released)
+
+	// Acquiring lock
 	locker.acquire(ctx, "")
 	assert.True(t, acquired)
 	assert.False(t, released)
+
+	// Releasing lock
 	locker.release(ctx, "")
 	assert.True(t, released)
 }
@@ -55,7 +59,7 @@ func TestAcquire(t *testing.T) {
 		lockOpt := func(*Lock) {
 			optCalled = true
 		}
-		locker := New(acquire, release, WithBackoff(&testBackoff{}))
+		locker := New(acquire, release, WithDelay(&testDelay{}))
 		lock, err := locker.Acquire(ctx, "key", lockOpt)
 		require.NoError(t, err)
 		assert.True(t, acquired)
@@ -77,7 +81,7 @@ func TestAcquire(t *testing.T) {
 			acquired = true
 			return nil
 		}
-		locker := New(acquire, release, WithBackoff(&testBackoff{}))
+		locker := New(acquire, release, WithDelay(&testDelay{}))
 		_, err := locker.Acquire(ctx, "")
 		require.NoError(t, err)
 		assert.True(t, acquired)
@@ -114,4 +118,21 @@ func TestRelease(t *testing.T) {
 	err = lock.Release(ctx)
 	require.NoError(t, err)
 	assert.True(t, released)
+}
+
+func TestAttempts(t *testing.T) {
+	ctx := context.Background()
+	maxAttempts := 5
+	attempts := 0
+	acquire := func(ctx context.Context, key interface{}) error {
+		attempts++
+		return ErrAlreadyLocked
+	}
+	release := func(ctx context.Context, key interface{}) error {
+		return nil
+	}
+	locker := New(acquire, release, WithAttempts(maxAttempts))
+	_, err := locker.Acquire(ctx, "")
+	assert.Equal(t, ErrMaxAttemptReached, err)
+	assert.Equal(t, maxAttempts, attempts)
 }

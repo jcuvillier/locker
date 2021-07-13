@@ -2,24 +2,24 @@ package locker
 
 import "time"
 
-// Backoff interface defines the backoff algorithm used in retry mechanism
-type Backoff interface {
+// Delay interface defines the delay algorithm used in retry mechanism
+type Delay interface {
 
 	// Next returns the duration for the next attempt
 	// Implemtation should also increase an attempt counter
 	Next() time.Duration
 }
 
-var defaultBackoff = &FixedBackoff{
+var defaultDelay = &FixedDelay{
 	Duration: 5 * time.Millisecond,
 }
 
-// FixedBackoff structure defines a backoff algorithm allways returning a fixed duration
-type FixedBackoff struct {
+// FixedDelay structure defines a delay algorithm always returning a fixed duration
+type FixedDelay struct {
 	Duration time.Duration
 }
 
 // Next returns the duration for the next attempt
-func (b *FixedBackoff) Next() time.Duration {
+func (b *FixedDelay) Next() time.Duration {
 	return b.Duration
 }
